@@ -57,7 +57,7 @@ def show_text_beginning(text, max_n_char=64):
 if __name__ == "__main__":
     dao = entrydao.EntryDao()
     go_on = True
-    print("n/u/d/l/q")
+    print("l/s/n/u/d/q")
     while go_on:
         ans = input()
         ans_splitted = ans.split()
@@ -67,8 +67,25 @@ if __name__ == "__main__":
             write_new(dao)
 
         if ans in ("l", "list"):
+            print(".")
             for id, entry in dao.get_all():
                 print(f"{id}.", show_text_beginning(entry.text.strip()))
+
+        if ans_head in ("s", "show"):
+            input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
+            try:
+                id_entry = int(input_id_entry)
+            except ValueError:
+                print("id must be int")
+            else:
+                entry = dao.get(id_entry)
+                if entry is not None:
+                    n = max([len(line) for line in entry.text.split("\n")])
+                    print("="*n)
+                    print(entry.text.strip())
+                    print("="*n)
+                else:
+                    print(f"Entry with id {id_entry} not found")
 
         if ans_head in ("u", "update"):
             input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
@@ -86,15 +103,19 @@ if __name__ == "__main__":
             input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
             try:
                 id_entry = int(input_id_entry)
-                nb_row_deleted = dao.delete(id_entry)
-                if nb_row_deleted == 0:
-                    print("no row deleted")
             except ValueError:
                 print("id must be int")
+            else:
+                nb_row_deleted = 0
+                if input(f"delete entry {id_entry} (y/*) ?") == "y":
+                    nb_row_deleted = dao.delete(id_entry)
+                print("no row deleted" if nb_row_deleted < 1
+                      else f"deleted {nb_row_deleted} row" + "s"*(nb_row_deleted > 1))
 
         if ans in ("q", "quit"):
             go_on = False
 
-        if ans in ("init",):
-            shutil.rmtree(os.path.dirname(entrydao.db_path_default))
-            dao.init_table()
+        if ans in ("reset", ):
+            if input("reset the table? (y/*)") == "y":
+                shutil.rmtree(os.path.dirname(entrydao.db_path_default))
+                dao.init_table()
