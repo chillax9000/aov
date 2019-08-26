@@ -54,15 +54,23 @@ def show_text_beginning(text, max_n_char=64):
         return lines[0][:max_n_char] + " [...]"
 
 
+def help():
+    print("h/l/s/n/u/d/q/reset")
+
+
 if __name__ == "__main__":
     dao = entrydao.EntryDao()
     go_on = True
-    print("l/s/n/u/d/q")
+    help()
     while go_on:
         ans = input()
         ans_splitted = ans.split()
         ans_head = ans_splitted[0] if len(ans_splitted) > 0 else None
         ans_tail = ans_splitted[1:]
+
+        if ans in ("h", "help"):
+            help()
+
         if ans in ("n", "new", "w", "write"):
             write_new(dao)
 
