@@ -54,11 +54,20 @@ class EntryDao:
         c.execute(f"SELECT * FROM entries WHERE id == {id}")
         record = c.fetchone()
         conn.close()
-        return _record_to_entry(record)
+        return _record_to_entry(record) if record else None
 
     def update(self, id, entry):
         conn = self.get_conn()
         c = conn.cursor()
-        c.execute(f"""UPDATE entries SET TEXT = "{entry.text}" WHERE id == {id}""")
+        c.execute(f"""UPDATE entries SET TEXT = "{entry.text}" WHERE id = {id}""")
         conn.commit()
         conn.close()
+
+    def delete(self, id):
+        conn = self.get_conn()
+        c = conn.cursor()
+        c.execute(f"""DELETE FROM entries WHERE id = {id}""")
+        nb_row_deleted = conn.total_changes
+        conn.commit()
+        conn.close()
+        return nb_row_deleted

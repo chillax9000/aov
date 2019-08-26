@@ -17,8 +17,17 @@ def write_new(dao):
         dao.write(entry_)
 
 
+class EntryNotFoundError(Exception):
+    """ Entry not found. """
+
+    def __init__(self, *args, **kwargs):  # real signature unknown
+        pass
+
+
 def update(id_entry, dao):
     entry_old = dao.get(id_entry)
+    if entry_old is None:
+        raise EntryNotFoundError()
     with tempfile.NamedTemporaryFile() as buffer:
         buffer_path = buffer.name
 
@@ -32,9 +41,14 @@ def update(id_entry, dao):
         dao.update(id_entry, entry_new)
 
 
+def delete(id_entry, dao):
+    dao.delete(id_entry)
+
+
 if __name__ == "__main__":
     dao = entrydao.EntryDao()
     go_on = True
+    print("n/u/d/l/q")
     while go_on:
         ans = input()
         ans_splitted = ans.split()
@@ -51,9 +65,23 @@ if __name__ == "__main__":
             input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
             try:
                 id_entry = int(input_id_entry)
-                update(id_entry, dao)
             except ValueError:
-                "id must be int"
+                print("id must be int")
+            else:
+                try:
+                    update(id_entry, dao)
+                except EntryNotFoundError:
+                    print(f"Entry with id {id_entry} not found")
+
+        if ans_head in ("d", "del", "delete"):
+            input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
+            try:
+                id_entry = int(input_id_entry)
+                nb_row_deleted = dao.delete(id_entry)
+                if nb_row_deleted == 0:
+                    print("no row deleted")
+            except ValueError:
+                print("id must be int")
 
         if ans in ("q", "quit"):
             go_on = False
