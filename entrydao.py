@@ -44,3 +44,10 @@ class EntryDao:
         record = c.fetchone()
         conn.close()
         return record
+
+    def update(self, id, entry):
+        conn = self.get_conn()
+        c = conn.cursor()
+        c.execute(f"""UPDATE entries SET TEXT = "{entry.text}" WHERE id == {id}""")
+        conn.commit()
+        conn.close()
