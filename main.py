@@ -45,6 +45,15 @@ def delete(id_entry, dao):
     dao.delete(id_entry)
 
 
+def show_text_beginning(text, max_n_char=64):
+    lines = text.split("\n")
+    if len(lines) <= 1:
+        end = " [...]" if len(text) > max_n_char else ""
+        return text[:max_n_char] + end
+    else:
+        return lines[0][:max_n_char] + " [...]"
+
+
 if __name__ == "__main__":
     dao = entrydao.EntryDao()
     go_on = True
@@ -59,7 +68,7 @@ if __name__ == "__main__":
 
         if ans in ("l", "list"):
             for id, entry in dao.get_all():
-                print(f"{id}.", entry.text.strip())
+                print(f"{id}.", show_text_beginning(entry.text.strip()))
 
         if ans_head in ("u", "update"):
             input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
@@ -86,6 +95,6 @@ if __name__ == "__main__":
         if ans in ("q", "quit"):
             go_on = False
 
-        if ans in ("init", ):
+        if ans in ("init",):
             shutil.rmtree(os.path.dirname(entrydao.db_path_default))
             dao.init_table()
