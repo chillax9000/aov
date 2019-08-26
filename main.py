@@ -1,7 +1,7 @@
 import os
 import shutil
 import subprocess
-import entry
+from entry import Entry
 import entrydao
 import tempfile
 
@@ -13,23 +13,23 @@ def write_new(dao):
         cmd = ["vim", buffer_path]
         subprocess.run(cmd)
 
-        entry_ = entry.Entry.from_file(buffer_path)
+        entry_ = Entry.from_file(buffer_path)
         dao.write(entry_)
 
 
 def update(id_entry, dao):
-    id, old_text = dao.get(id_entry)
+    entry_old = dao.get(id_entry)
     with tempfile.NamedTemporaryFile() as buffer:
         buffer_path = buffer.name
 
         with open(buffer_path, "w") as f:
-            f.write(old_text)
+            f.write(entry_old.text)
 
         cmd = ["vim", buffer_path]
         subprocess.run(cmd)
 
-        entry_ = entry.Entry.from_file(buffer_path)
-        dao.update(id_entry, entry_)
+        entry_new = Entry.from_file(buffer_path)
+        dao.update(id_entry, entry_new)
 
 
 if __name__ == "__main__":
@@ -37,20 +37,27 @@ if __name__ == "__main__":
     go_on = True
     while go_on:
         ans = input()
-        if ans in ("w", "write", "new"):
+        ans_splitted = ans.split()
+        ans_head = ans_splitted[0] if len(ans_splitted) > 0 else None
+        ans_tail = ans_splitted[1:]
+        if ans in ("n", "new", "w", "write"):
             write_new(dao)
 
         if ans in ("l", "list"):
-            for row in dao.get_all():
-                print(row)
+            for id, entry in dao.get_all():
+                print(f"{id}.", entry.text.strip())
 
-        if ans in ("u", "update"):
-            id_entry = int(input("entry id:"))
-            update(id_entry, dao)
+        if ans_head in ("u", "update"):
+            input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
+            try:
+                id_entry = int(input_id_entry)
+                update(id_entry, dao)
+            except ValueError:
+                "id must be int"
 
         if ans in ("q", "quit"):
             go_on = False
 
-        if ans in ("init"):
+        if ans in ("init", ):
             shutil.rmtree(os.path.dirname(entrydao.db_path_default))
             dao.init_table()

@@ -1,7 +1,18 @@
 import os
 import sqlite3
+import entry
 
 db_path_default = os.path.join(os.path.dirname(__file__), "data", "data.db")
+
+
+def _get_id(record):
+    id, text = record
+    return id
+
+
+def _record_to_entry(record):
+    id, text = record
+    return entry.Entry(text)
 
 
 class EntryDao:
@@ -35,7 +46,7 @@ class EntryDao:
         c.execute("SELECT * FROM entries")
         records = c.fetchall()
         conn.close()
-        return records
+        return [(_get_id(record), _record_to_entry(record)) for record in records]
 
     def get(self, id):
         conn = self.get_conn()
@@ -43,7 +54,7 @@ class EntryDao:
         c.execute(f"SELECT * FROM entries WHERE id == {id}")
         record = c.fetchone()
         conn.close()
-        return record
+        return _record_to_entry(record)
 
     def update(self, id, entry):
         conn = self.get_conn()
