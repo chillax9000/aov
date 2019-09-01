@@ -46,13 +46,11 @@ def entry_to_user_input(entry):
     return template.format(body=entry.text, header=make_header(entry.datetime))
 
 
-def show_text_beginning(text, max_n_char=64):
-    lines = text.split("\n")
-    if len(lines) <= 1:
-        end = " [...]" if len(text) > max_n_char else ""
-        return text[:max_n_char] + end
-    else:
-        return lines[0][:max_n_char] + " [...]"
+def show_text_beginning(text, max_n_char=32, going_on="..."):
+    cut = text[:max_n_char + 1].replace("\n", " ")
+    end = going_on if len(cut) > max_n_char else ""
+    s = cut[:max_n_char - len(end)] + end
+    return f"{s:<{max_n_char}}"
 
 
 def write_new(dao):
@@ -70,7 +68,7 @@ def update(id_entry, dao):
 
 def list_entries():
     for id, entry in dao.get_all():
-        print(f"{id}.", datetime_str_default(entry.datetime), show_text_beginning(entry.text.strip()))
+        print(f"{id}", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
 
 
 def show(id_entry):
