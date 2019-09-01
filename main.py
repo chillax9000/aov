@@ -107,6 +107,9 @@ if __name__ == "__main__":
         ans_head = ans_splitted[0] if len(ans_splitted) > 0 else None
         ans_tail = ans_splitted[1:]
 
+        def get_entry_id_or_ask(ans_tail):
+            return ans_tail[0] if len(ans_tail) > 0 else input("entry id?")
+
         if ans in ("h", "help"):
             help()
 
@@ -118,7 +121,7 @@ if __name__ == "__main__":
             list_entries()
 
         if ans_head in ("s", "show"):
-            input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
+            input_id_entry = get_entry_id_or_ask(ans_tail)
             try:
                 id_entry = int(input_id_entry)
             except ValueError:
@@ -127,7 +130,7 @@ if __name__ == "__main__":
                 show(id_entry)
 
         if ans_head in ("u", "update"):
-            input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
+            input_id_entry = get_entry_id_or_ask(ans_tail)
             try:
                 id_entry = int(input_id_entry)
             except ValueError:
@@ -139,7 +142,7 @@ if __name__ == "__main__":
                     print(f"Entry with id {id_entry} not found")
 
         if ans_head in ("d", "del", "delete"):
-            input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
+            input_id_entry = get_entry_id_or_ask(ans_tail)
             try:
                 id_entry = int(input_id_entry)
             except ValueError:
