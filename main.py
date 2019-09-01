@@ -15,7 +15,7 @@ def datetime_str_default(datetime):
 def get_user_input(text_in=""):
     with tempfile.NamedTemporaryFile() as buffer:
         buffer_path = buffer.name
-        
+
         with open(buffer_path, "w") as f:
             f.write(text_in)
 
@@ -37,13 +37,22 @@ def entry_from_user_input(text, header_size=DEFAULT_HEADER_SIZE):
 def make_header(creation_datetime):
     datetime_str = datetime_str_default(creation_datetime)
     line = f"created: {datetime_str}"
-    bar = "~"*len(line)
+    bar = "~" * len(line)
     return f"{line}\n{bar}"
 
 
 def entry_to_user_input(entry):
     template = "{header}\n{body}"
     return template.format(body=entry.text, header=make_header(entry.datetime))
+
+
+def show_text_beginning(text, max_n_char=64):
+    lines = text.split("\n")
+    if len(lines) <= 1:
+        end = " [...]" if len(text) > max_n_char else ""
+        return text[:max_n_char] + end
+    else:
+        return lines[0][:max_n_char] + " [...]"
 
 
 def write_new(dao):
@@ -59,17 +68,29 @@ def update(id_entry, dao):
     dao.update(id_entry, entry_new)
 
 
+def list_entries():
+    for id, entry in dao.get_all():
+        print(f"{id}.", datetime_str_default(entry.datetime), show_text_beginning(entry.text.strip()))
+
+
+def show(id_entry):
+    entry = dao.get(id_entry)
+    if entry is not None:
+        n = max([len(line) for line in entry.text.split("\n")])
+        print("=" * n)
+        print(entry.text.strip())
+        print("=" * n)
+    else:
+        print(f"Entry with id {id_entry} not found")
+
+
 def delete(id_entry, dao):
     dao.delete(id_entry)
 
 
-def show_text_beginning(text, max_n_char=64):
-    lines = text.split("\n")
-    if len(lines) <= 1:
-        end = " [...]" if len(text) > max_n_char else ""
-        return text[:max_n_char] + end
-    else:
-        return lines[0][:max_n_char] + " [...]"
+def reset():
+    shutil.rmtree(os.path.dirname(entrydao.db_path_default))
+    dao.init_table()
 
 
 def help():
@@ -94,8 +115,7 @@ if __name__ == "__main__":
 
         if ans in ("l", "list"):
             print(".")
-            for id, entry in dao.get_all():
-                print(f"{id}.", datetime_str_default(entry.datetime), show_text_beginning(entry.text.strip()))
+            list_entries()
 
         if ans_head in ("s", "show"):
             input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
@@ -104,14 +124,7 @@ if __name__ == "__main__":
             except ValueError:
                 print("id must be int")
             else:
-                entry = dao.get(id_entry)
-                if entry is not None:
-                    n = max([len(line) for line in entry.text.split("\n")])
-                    print("=" * n)
-                    print(entry.text.strip())
-                    print("=" * n)
-                else:
-                    print(f"Entry with id {id_entry} not found")
+                show(id_entry)
 
         if ans_head in ("u", "update"):
             input_id_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id:")
@@ -138,10 +151,9 @@ if __name__ == "__main__":
                 print("no row deleted" if nb_row_deleted < 1
                       else f"deleted {nb_row_deleted} row" + "s" * (nb_row_deleted > 1))
 
-        if ans in ("q", "quit"):
-            go_on = False
-
         if ans in ("reset",):
             if input("reset the table? (y/*)") == "y":
-                shutil.rmtree(os.path.dirname(entrydao.db_path_default))
-                dao.init_table()
+                reset()
+
+        if ans in ("q", "quit"):
+            go_on = False
