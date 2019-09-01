@@ -1,18 +1,19 @@
 import os
 import sqlite3
 import entry
+import datetime as dt
 
 db_path_default = os.path.join(os.path.dirname(__file__), "data", "data.db")
 
 
 def _get_id(record):
-    id, text = record
+    id, text, datetime_str = record
     return id
 
 
 def _record_to_entry(record):
-    id, text = record
-    return entry.Entry(text)
+    id, text, datetime_str = record
+    return entry.Entry(text, dt.datetime.fromisoformat(datetime_str))
 
 
 class EntryDao:
@@ -27,7 +28,7 @@ class EntryDao:
     def init_table(self):
         conn = self.get_conn()
         c = conn.cursor()
-        c.execute("CREATE TABLE entries (id INTEGER PRIMARY KEY, text TEXT)")
+        c.execute("CREATE TABLE entries (id INTEGER PRIMARY KEY, text TEXT, datetime timestamp)")
         conn.commit()
         conn.close()
 
@@ -35,7 +36,7 @@ class EntryDao:
         conn = self.get_conn()
         c = conn.cursor()
         c.execute(f"""
-        INSERT INTO entries(text) VALUES ("{entry.text}")
+        INSERT INTO entries(text, datetime) VALUES ("{entry.text}", "{entry.datetime.isoformat()}")
         """)
         conn.commit()
         conn.close()
