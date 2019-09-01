@@ -4,6 +4,8 @@ import subprocess
 from entry import Entry, EntryNotFoundError
 import entrydao
 import tempfile
+import random
+import string
 
 DEFAULT_HEADER_SIZE = 2
 
@@ -54,7 +56,7 @@ def show_text_beginning(text, max_n_char=32, going_on="..."):
 
 
 def write_new(dao):
-    entry_new = entry_from_user_input(get_user_input())
+    entry_new = entry_from_user_input(get_user_input(entry_to_user_input(Entry())))
     dao.write(entry_new)
 
 
@@ -68,7 +70,7 @@ def update(id_entry, dao):
 
 def list_entries():
     for id, entry in dao.get_all():
-        print(f"{id}", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
+        print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
 
 
 def show(id_entry):
@@ -92,7 +94,13 @@ def reset():
 
 
 def help():
-    print("h/l/s/n/u/d/q/reset")
+    print("h/l/s/n/u/d/q/reset/random")
+
+
+def write_random_entry(dao, text_size=64):
+    chars = " " + string.ascii_lowercase
+    text = "".join(random.choices(chars, weights=[8] + [1 for _ in string.ascii_lowercase], k=text_size))
+    dao.write(Entry(text))
 
 
 if __name__ == "__main__":
@@ -155,6 +163,9 @@ if __name__ == "__main__":
         if ans in ("reset",):
             if input("reset the table? (y/*)") == "y":
                 reset()
+
+        if ans in ("random", ):
+            write_random_entry(dao)
 
         if ans in ("q", "quit"):
             go_on = False
