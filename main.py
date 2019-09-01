@@ -17,16 +17,6 @@ def prompt_warning(func):
     return func
 
 
-def aliases(a_list=None):
-    def aliases_decorator(func):
-        func.aliases = [func.__name__]
-        if a_list:
-            func.aliases.extend(a_list)
-        return func
-
-    return aliases_decorator
-
-
 def datetime_str_default(datetime):
     return f"({datetime:%Y-%m-%d:%H.%M})"
 
@@ -72,13 +62,11 @@ def show_text_beginning(text, max_n_char=32, going_on="..."):
     return f"{s:<{max_n_char}}"
 
 
-@aliases(["new", "n"])
 def write_new(dao):
     entry_new = entry_from_user_input(get_user_input(entry_to_user_input(Entry())))
     dao.write(entry_new)
 
 
-@aliases(["u"])
 def update(dao, id_entry):
     entry_old = dao.get(id_entry)
     if entry_old is None:
@@ -88,13 +76,11 @@ def update(dao, id_entry):
     dao.update(id_entry, entry_new)
 
 
-@aliases(["list", "l"])
 def list_entries(dao):
     for id, entry in dao.get_all():
         print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
 
 
-@aliases(["s"])
 def show(id_entry, dao):
     entry = dao.get(id_entry)
     if entry is not None:
@@ -106,42 +92,38 @@ def show(id_entry, dao):
         print(f"Entry with id {id_entry} not found")
 
 
-@aliases(["d"])
 @prompt_warning
 def delete(id_entry, dao):
     nb_row_deleted = dao.delete(id_entry)
     print(f"nb of rows deleted: {nb_row_deleted}")
 
 
-@aliases()
 @prompt_warning
 def reset(dao):
     shutil.rmtree(os.path.dirname(entrydao.db_path_default))
     dao.init_table()
 
 
-@aliases(["h"])
 def help(actions):
-    print("/".join([sorted(action.aliases, key=len)[0] for action in actions]))
+    print("/".join([sorted(aliases, key=len)[0] for action, aliases in actions.items()]))
 
 
-@aliases(["random"])
 def write_random_entry(dao, text_size=64):
     chars = " " + string.ascii_lowercase
     text = "".join(random.choices(chars, weights=[8] + [1 for _ in string.ascii_lowercase], k=text_size))
     dao.write(Entry(text))
 
 
-actions = [
-    help,
-    list_entries,
-    show,
-    update,
-    write_new,
-    write_random_entry,
-    delete,
-    reset
-]
+actions = {
+    help: ["h", "help"],
+    list_entries: ["list", "l"],
+    show: ["s", "show"],
+    update: ["update", "u"],
+    write_new: ["new", "n"],
+    write_random_entry: ["random"],
+    delete: ["delete", "d"],
+    reset: ["reset"]
+}
 
 
 def get_check_id_entry(ans_tail):
@@ -158,8 +140,8 @@ def loop(actions, dao):
         ans_splitted = ans.split()
         ans_head = ans_splitted[0] if len(ans_splitted) > 0 else None
         ans_tail = ans_splitted[1:]
-        for action in actions:
-            if ans_head in action.aliases:
+        for action, aliases in actions.items():
+            if ans_head in aliases:
                 if getattr(action, "prompt_warning", False):
                     if input("Are you sure? (y/*)") != "y":
                         print("nothing happened")
