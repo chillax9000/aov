@@ -1,44 +1,30 @@
+import inspect
 import os
-import shutil
-import subprocess
-from entry import Entry, EntryNotFoundError
-import entrydao
-import tempfile
 import random
+import shutil
 import string
+import subprocess
+import tempfile
+
+import entrydao
+from entry import Entry, EntryNotFoundError
 
 DEFAULT_HEADER_SIZE = 2
 
 
-def force_arg_to_int(n_arg=0):
-    def force_arg_to_int_decorator(func):
-        def func_wrapper(*args, **kwargs):
-            if n_arg >= len(args):
-                raise ValueError(f"Asked to check arg {n_arg} but got only {len(args)} args")
-            args_list = list(args)
-            try:
-                args_list[n_arg] = int(args_list[n_arg])
-            except ValueError:
-                print(f"Expected argument to be int or to be convertible to int, unlike: {args_list[n_arg]}")
-            else:
-                return func(*args_list, **kwargs)
-
-        return func_wrapper
-
-    return force_arg_to_int_decorator
+def prompt_warning(func):
+    func.prompt_warning = True
+    return func
 
 
-def double_check(s="Sure?"):
-    def double_check_decorator(func):
-        def func_wrapper(*args, **kwargs):
-            if input(f"{s} (y/*)") == "y":
-                func(*args, **kwargs)
-            else:
-                print("nothing happened")
+def aliases(a_list=None):
+    def aliases_decorator(func):
+        func.aliases = [func.__name__]
+        if a_list:
+            func.aliases.extend(a_list)
+        return func
 
-        return func_wrapper
-
-    return double_check_decorator
+    return aliases_decorator
 
 
 def datetime_str_default(datetime):
@@ -86,13 +72,14 @@ def show_text_beginning(text, max_n_char=32, going_on="..."):
     return f"{s:<{max_n_char}}"
 
 
+@aliases(["new", "n"])
 def write_new(dao):
     entry_new = entry_from_user_input(get_user_input(entry_to_user_input(Entry())))
     dao.write(entry_new)
 
 
-@force_arg_to_int()
-def update(id_entry, dao):
+@aliases(["u"])
+def update(dao, id_entry):
     entry_old = dao.get(id_entry)
     if entry_old is None:
         print(f"Entry with id {id_entry} not found")
@@ -101,12 +88,13 @@ def update(id_entry, dao):
     dao.update(id_entry, entry_new)
 
 
+@aliases(["list", "l"])
 def list_entries(dao):
     for id, entry in dao.get_all():
         print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
 
 
-@force_arg_to_int()
+@aliases(["s"])
 def show(id_entry, dao):
     entry = dao.get(id_entry)
     if entry is not None:
@@ -118,65 +106,81 @@ def show(id_entry, dao):
         print(f"Entry with id {id_entry} not found")
 
 
-@double_check("Sure to delete?")
-@force_arg_to_int()
-def delete(input_id_entry, dao):
-    nb_row_deleted = dao.delete(input_id_entry)
+@aliases(["d"])
+@prompt_warning
+def delete(id_entry, dao):
+    nb_row_deleted = dao.delete(id_entry)
     print(f"nb of rows deleted: {nb_row_deleted}")
 
 
-@double_check("Sure to reset?")
-def reset():
+@aliases()
+@prompt_warning
+def reset(dao):
     shutil.rmtree(os.path.dirname(entrydao.db_path_default))
     dao.init_table()
 
 
-def help():
-    print("h/l/s/n/u/d/q/reset/random")
+@aliases(["h"])
+def help(actions):
+    print("/".join([sorted(action.aliases, key=len)[0] for action in actions]))
 
 
+@aliases(["random"])
 def write_random_entry(dao, text_size=64):
     chars = " " + string.ascii_lowercase
     text = "".join(random.choices(chars, weights=[8] + [1 for _ in string.ascii_lowercase], k=text_size))
     dao.write(Entry(text))
 
 
-if __name__ == "__main__":
+actions = [
+    help,
+    list_entries,
+    show,
+    update,
+    write_new,
+    write_random_entry,
+    delete,
+    reset
+]
 
-    def get_entry_id_or_ask(ans_tail):
-        return ans_tail[0] if len(ans_tail) > 0 else input("entry id?")
 
-    dao = entrydao.EntryDao()
-    go_on = True
-    help()
-    while go_on:
+def get_check_id_entry(ans_tail):
+    input_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id?")
+    try:
+        return int(input_entry)
+    except ValueError:
+        raise ValueError(f"Expected integer, unlike: {input_entry}")
+
+
+def loop(actions, dao):
+    while True:
         ans = input()
         ans_splitted = ans.split()
         ans_head = ans_splitted[0] if len(ans_splitted) > 0 else None
         ans_tail = ans_splitted[1:]
-        if ans in ("h", "help"):
-            help()
+        for action in actions:
+            if ans_head in action.aliases:
+                if getattr(action, "prompt_warning", False):
+                    if input("Are you sure? (y/*)") != "y":
+                        print("nothing happened")
+                        continue
+                expected_args = inspect.getfullargspec(action)[0]
+                getters = {
+                    "dao": lambda: dao,
+                    "id_entry": lambda: get_check_id_entry(ans_tail),
+                    "actions": lambda: actions,
+                }
+                try:
+                    selected_items = {name: getter() for name, getter in getters.items() if name in expected_args}
+                    action(**selected_items)
+                except ValueError as e:
+                    print(e)
+                except EntryNotFoundError as e:
+                    print(e)
 
-        if ans in ("n", "new", "w", "write"):
-            write_new(dao)
+        if ans_head in ("quit", "q"):
+            break
 
-        if ans in ("l", "list"):
-            list_entries(dao)
 
-        if ans_head in ("s", "show"):
-            show(get_entry_id_or_ask(ans_tail), dao)
-
-        if ans_head in ("u", "update"):
-            update(get_entry_id_or_ask(ans_tail), dao)
-
-        if ans_head in ("d", "del", "delete"):
-            delete(get_entry_id_or_ask(ans_tail), dao)
-
-        if ans in ("reset",):
-            reset()
-
-        if ans in ("random",):
-            write_random_entry(dao)
-
-        if ans in ("q", "quit"):
-            go_on = False
+if __name__ == "__main__":
+    loop(actions, entrydao.EntryDao())
