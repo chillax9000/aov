@@ -1,7 +1,7 @@
 import os
 import shutil
 import subprocess
-from entry import Entry
+from entry import Entry, EntryNotFoundError
 import entrydao
 import tempfile
 
@@ -12,7 +12,22 @@ def datetime_str_default(datetime):
     return f"({datetime:%Y-%m-%d:%H.%M})"
 
 
-def entry_from_bufferfile_text(text, header_size=DEFAULT_HEADER_SIZE):
+def get_user_input(text_in=""):
+    with tempfile.NamedTemporaryFile() as buffer:
+        buffer_path = buffer.name
+        
+        with open(buffer_path, "w") as f:
+            f.write(text_in)
+
+        cmd = ["vim", buffer_path]
+        subprocess.run(cmd)
+
+        with open(buffer_path, "r") as f:
+            text_out = f.read()
+    return text_out
+
+
+def entry_from_user_input(text, header_size=DEFAULT_HEADER_SIZE):
     """header lines are ignored """
     lines = text.split("\n")
     new_text = "\n".join(lines[header_size:])
@@ -26,46 +41,22 @@ def make_header(creation_datetime):
     return f"{line}\n{bar}"
 
 
-def entry_to_bufferfile_text(entry):
+def entry_to_user_input(entry):
     template = "{header}\n{body}"
     return template.format(body=entry.text, header=make_header(entry.datetime))
 
 
 def write_new(dao):
-    with tempfile.NamedTemporaryFile() as buffer:
-        buffer_path = buffer.name
-
-        cmd = ["vim", buffer_path]
-        subprocess.run(cmd)
-
-        entry_ = Entry.from_file(buffer_path)
-        dao.write(entry_)
-
-
-class EntryNotFoundError(Exception):
-    """ Entry not found. """
-
-    def __init__(self, *args, **kwargs):  # real signature unknown
-        pass
+    entry_new = entry_from_user_input(get_user_input())
+    dao.write(entry_new)
 
 
 def update(id_entry, dao):
     entry_old = dao.get(id_entry)
     if entry_old is None:
         raise EntryNotFoundError()
-    with tempfile.NamedTemporaryFile() as buffer:
-        buffer_path = buffer.name
-
-        with open(buffer_path, "w") as f:
-            f.write(entry_to_bufferfile_text(entry_old))
-
-        cmd = ["vim", buffer_path]
-        subprocess.run(cmd)
-
-        with open(buffer_path, "r") as f:
-            entry_new = entry_from_bufferfile_text(f.read())
-
-        dao.update(id_entry, entry_new)
+    entry_new = entry_from_user_input(get_user_input(entry_to_user_input(entry_old)))
+    dao.update(id_entry, entry_new)
 
 
 def delete(id_entry, dao):

@@ -11,3 +11,10 @@ class Entry:
         with open(file_path, "r") as f:
             text = f.read()
             return cls(text, dt.datetime.now())
+
+
+class EntryNotFoundError(Exception):
+
+    """ Entry not found. """
+    def __init__(self, *args, **kwargs):  # real signature unknown
+        pass
