@@ -10,6 +10,37 @@ import string
 DEFAULT_HEADER_SIZE = 2
 
 
+def force_arg_to_int(n_arg=0):
+    def force_arg_to_int_decorator(func):
+        def func_wrapper(*args, **kwargs):
+            if n_arg >= len(args):
+                raise ValueError(f"Asked to check arg {n_arg} but got only {len(args)} args")
+            args_list = list(args)
+            try:
+                args_list[n_arg] = int(args_list[n_arg])
+            except ValueError:
+                print(f"Expected argument to be int or to be convertible to int, unlike: {args_list[n_arg]}")
+            else:
+                return func(*args_list, **kwargs)
+
+        return func_wrapper
+
+    return force_arg_to_int_decorator
+
+
+def double_check(s="Sure?"):
+    def double_check_decorator(func):
+        def func_wrapper(*args, **kwargs):
+            if input(f"{s} (y/*)") == "y":
+                func(*args, **kwargs)
+            else:
+                print("nothing happened")
+
+        return func_wrapper
+
+    return double_check_decorator
+
+
 def datetime_str_default(datetime):
     return f"({datetime:%Y-%m-%d:%H.%M})"
 
@@ -60,20 +91,23 @@ def write_new(dao):
     dao.write(entry_new)
 
 
+@force_arg_to_int()
 def update(id_entry, dao):
     entry_old = dao.get(id_entry)
     if entry_old is None:
-        raise EntryNotFoundError()
+        print(f"Entry with id {id_entry} not found")
+        return
     entry_new = entry_from_user_input(get_user_input(entry_to_user_input(entry_old)))
     dao.update(id_entry, entry_new)
 
 
-def list_entries():
+def list_entries(dao):
     for id, entry in dao.get_all():
         print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
 
 
-def show(id_entry):
+@force_arg_to_int()
+def show(id_entry, dao):
     entry = dao.get(id_entry)
     if entry is not None:
         n = max([len(line) for line in entry.text.split("\n")])
@@ -84,10 +118,14 @@ def show(id_entry):
         print(f"Entry with id {id_entry} not found")
 
 
-def delete(id_entry, dao):
-    dao.delete(id_entry)
+@double_check("Sure to delete?")
+@force_arg_to_int()
+def delete(input_id_entry, dao):
+    nb_row_deleted = dao.delete(input_id_entry)
+    print(f"nb of rows deleted: {nb_row_deleted}")
 
 
+@double_check("Sure to reset?")
 def reset():
     shutil.rmtree(os.path.dirname(entrydao.db_path_default))
     dao.init_table()
@@ -104,6 +142,10 @@ def write_random_entry(dao, text_size=64):
 
 
 if __name__ == "__main__":
+
+    def get_entry_id_or_ask(ans_tail):
+        return ans_tail[0] if len(ans_tail) > 0 else input("entry id?")
+
     dao = entrydao.EntryDao()
     go_on = True
     help()
@@ -112,10 +154,6 @@ if __name__ == "__main__":
         ans_splitted = ans.split()
         ans_head = ans_splitted[0] if len(ans_splitted) > 0 else None
         ans_tail = ans_splitted[1:]
-
-        def get_entry_id_or_ask(ans_tail):
-            return ans_tail[0] if len(ans_tail) > 0 else input("entry id?")
-
         if ans in ("h", "help"):
             help()
 
@@ -123,48 +161,21 @@ if __name__ == "__main__":
             write_new(dao)
 
         if ans in ("l", "list"):
-            print(".")
-            list_entries()
+            list_entries(dao)
 
         if ans_head in ("s", "show"):
-            input_id_entry = get_entry_id_or_ask(ans_tail)
-            try:
-                id_entry = int(input_id_entry)
-            except ValueError:
-                print("id must be int")
-            else:
-                show(id_entry)
+            show(get_entry_id_or_ask(ans_tail), dao)
 
         if ans_head in ("u", "update"):
-            input_id_entry = get_entry_id_or_ask(ans_tail)
-            try:
-                id_entry = int(input_id_entry)
-            except ValueError:
-                print("id must be int")
-            else:
-                try:
-                    update(id_entry, dao)
-                except EntryNotFoundError:
-                    print(f"Entry with id {id_entry} not found")
+            update(get_entry_id_or_ask(ans_tail), dao)
 
         if ans_head in ("d", "del", "delete"):
-            input_id_entry = get_entry_id_or_ask(ans_tail)
-            try:
-                id_entry = int(input_id_entry)
-            except ValueError:
-                print("id must be int")
-            else:
-                nb_row_deleted = 0
-                if input(f"delete entry {id_entry} (y/*) ?") == "y":
-                    nb_row_deleted = dao.delete(id_entry)
-                print("no row deleted" if nb_row_deleted < 1
-                      else f"deleted {nb_row_deleted} row" + "s" * (nb_row_deleted > 1))
+            delete(get_entry_id_or_ask(ans_tail), dao)
 
         if ans in ("reset",):
-            if input("reset the table? (y/*)") == "y":
-                reset()
+            reset()
 
-        if ans in ("random", ):
+        if ans in ("random",):
             write_random_entry(dao)
 
         if ans in ("q", "quit"):
