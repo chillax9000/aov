@@ -2,15 +2,9 @@ import datetime as dt
 
 
 class Entry:
-    def __init__(self, text="", datetime=dt.datetime(2000, 1, 1)):
+    def __init__(self, text="", datetime=None):
         self.text = text
-        self.datetime = datetime
-
-    @classmethod
-    def from_file(cls, file_path):
-        with open(file_path, "r") as f:
-            text = f.read()
-            return cls(text, dt.datetime.now())
+        self.datetime = datetime if datetime is not None else dt.datetime.now()
 
 
 class EntryNotFoundError(Exception):
