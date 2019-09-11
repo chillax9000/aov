@@ -19,6 +19,8 @@ def _record_to_entry(record):
 class EntryDao:
     def __init__(self, db_path=db_path_default):
         self.db_path = db_path
+        if not os.path.exists(db_path):
+            self.init_table()
 
     def get_conn(self):
         if not os.path.exists(os.path.dirname(self.db_path)):

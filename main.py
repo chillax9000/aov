@@ -5,6 +5,7 @@ import shutil
 import string
 import subprocess
 import tempfile
+import signal
 
 import entrydao
 from entry import Entry, EntryNotFoundError
@@ -164,5 +165,13 @@ def loop(actions, dao):
             break
 
 
+def exit_handler(sig, frame):
+    print("\nbye")
+    exit(0)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, exit_handler)
+
     loop(actions, entrydao.EntryDao())
+
