@@ -75,7 +75,7 @@ def entry_to_user_input(entry):
     return template.format(body=entry.text, header=make_header(entry.datetime))
 
 
-def show_text_beginning(text, max_n_char=32, going_on="..."):
+def _text_beginning(text, max_n_char=32, going_on="..."):
     cut = text[:max_n_char + 1].replace("\n", " ")
     end = going_on if len(cut) > max_n_char else ""
     s = cut[:max_n_char - len(end)] + end
@@ -84,7 +84,7 @@ def show_text_beginning(text, max_n_char=32, going_on="..."):
 
 def display_ids_entries(ids_entries):
     for id, entry in ids_entries:
-        print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
+        print(f"{id}|", _text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
 
 
 def write_new(dao):
@@ -109,7 +109,7 @@ def simple_search(dao, s):
     display_ids_entries(dao.get_containing(s))
 
 
-def show(dao, id_entry):
+def view(dao, id_entry):
     entry = dao.get(id_entry)
     if entry is not None:
         n = max([len(line) for line in entry.text.split("\n")])
@@ -157,8 +157,8 @@ class MainCmd(cmd.Cmd):
         simple_search(self.dao, arg)
 
     @check_arg_id_entry
-    def do_show(self, arg):
-        show(self.dao, arg)
+    def do_view(self, arg):
+        view(self.dao, arg)
 
     @check_arg_id_entry
     def do_update(self, arg):
@@ -187,7 +187,7 @@ class MainCmd(cmd.Cmd):
         return self.do_EOF(arg)
 
     def precmd(self, line):
-        # iin case of one-letter command, if there is only one matching command, expand
+        # allow to call a command with its first letter, when no ambiguity
         args = line.split()
         names = [name[3:] for name in self.get_names() if name.startswith("do_")]
         if args and len(args[0]) == 1:
