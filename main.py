@@ -6,6 +6,7 @@ import signal
 import string
 import subprocess
 import tempfile
+import datetime
 
 import entrydao
 from entry import Entry
@@ -41,26 +42,28 @@ def datetime_str_default(datetime):
     return f"({datetime:%Y-%m-%d:%H.%M})"
 
 
-def get_user_input(text_in=""):
+def get_user_input(text_entry):
+    text, entry = text_entry
     with tempfile.NamedTemporaryFile() as buffer:
         buffer_path = buffer.name
 
         with open(buffer_path, "w") as f:
-            f.write(text_in)
+            f.write(text)
 
         cmd = ["vim", buffer_path]
         subprocess.run(cmd)
 
         with open(buffer_path, "r") as f:
             text_out = f.read()
-    return text_out
+    return text_out, entry
 
 
-def entry_from_user_input(text, header_size=DEFAULT_HEADER_SIZE):
+def entry_from_user_input(text_entry, header_size=DEFAULT_HEADER_SIZE):
     """header lines are ignored """
+    text, entry = text_entry
     lines = text.split("\n")
     new_text = "\n".join(lines[header_size:])
-    return Entry(new_text)
+    return Entry(new_text, entry.creation_datetime, datetime.datetime.now())
 
 
 def make_header(creation_datetime):
@@ -72,7 +75,7 @@ def make_header(creation_datetime):
 
 def entry_to_user_input(entry):
     template = "{header}\n{body}"
-    return template.format(body=entry.text, header=make_header(entry.datetime))
+    return template.format(body=entry.text, header=make_header(entry.creation_datetime)), entry
 
 
 def _text_beginning(text, max_n_char=32, going_on="..."):
@@ -84,7 +87,11 @@ def _text_beginning(text, max_n_char=32, going_on="..."):
 
 def display_ids_entries(ids_entries):
     for id, entry in ids_entries:
-        print(f"{id}|", _text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
+        print(f"{id}|",
+              _text_beginning(entry.text.strip()),
+              datetime_str_default(entry.creation_datetime),
+              datetime_str_default(entry.update_datetime),
+              f"|{id}")
 
 
 def write_new(dao):

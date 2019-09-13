@@ -7,13 +7,15 @@ db_path_default = os.path.join(os.path.dirname(__file__), "data", "data.db")
 
 
 def _get_id(record):
-    id, text, datetime_str = record
+    id, text, creation_datetime_str, update_datetime_str = record
     return id
 
 
 def _record_to_entry(record):
-    id, text, datetime_str = record
-    return entry.Entry(text, dt.datetime.fromisoformat(datetime_str))
+    id, text, creation_datetime_str, update_datetime_str = record
+    return entry.Entry(text,
+                       dt.datetime.fromisoformat(creation_datetime_str),
+                       dt.datetime.fromisoformat(update_datetime_str))
 
 
 class EntryDao:
@@ -30,7 +32,11 @@ class EntryDao:
     def init_table(self):
         conn = self.get_conn()
         c = conn.cursor()
-        c.execute("CREATE TABLE entries (id INTEGER PRIMARY KEY, text TEXT, datetime timestamp)")
+        c.execute("""CREATE TABLE entries (
+        id INTEGER PRIMARY KEY, 
+        text TEXT, 
+        creation_datetime timestamp, 
+        update_datetime timestamp)""")
         conn.commit()
         conn.close()
 
@@ -38,7 +44,8 @@ class EntryDao:
         conn = self.get_conn()
         c = conn.cursor()
         c.execute(f"""
-        INSERT INTO entries(text, datetime) VALUES ("{entry.text}", "{entry.datetime.isoformat()}")
+        INSERT INTO entries(text, creation_datetime, update_datetime) 
+        VALUES ("{entry.text}", "{entry.creation_datetime.isoformat()}", "{entry.update_datetime.isoformat()}")
         """)
         conn.commit()
         conn.close()
@@ -62,7 +69,8 @@ class EntryDao:
     def update(self, id, entry):
         conn = self.get_conn()
         c = conn.cursor()
-        c.execute(f"""UPDATE entries SET TEXT = "{entry.text}" WHERE id = {id}""")
+        c.execute(f"""UPDATE entries SET (text, update_datetime)
+         = ("{entry.text}", "{entry.update_datetime.isoformat()}") WHERE id = {id}""")
         conn.commit()
         conn.close()
 
