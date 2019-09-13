@@ -1,12 +1,14 @@
 import inspect
 import os
 import random
+import readline
 import shutil
 import string
 import subprocess
 import tempfile
 import signal
 
+import completer
 import entrydao
 from entry import Entry, EntryNotFoundError
 
@@ -172,6 +174,10 @@ def exit_handler(sig, frame):
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, exit_handler)
+
+    options = [sorted(x, key=len)[-1] for x in actions.values()]
+    readline.set_completer(completer.Completer(options).complete)
+    readline.parse_and_bind('tab: complete')
 
     loop(actions, entrydao.EntryDao())
 
