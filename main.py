@@ -132,6 +132,11 @@ def write_random_entry(dao, text_size=64):
     dao.write(Entry(text))
 
 
+def simple_search(dao, s):
+    for id, entry in dao.get_containing(s):
+        print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
+
+
 def get_check_id_entry(ans_tail):
     input_entry = ans_tail if len(ans_tail) > 0 else input("entry id? ")
     try:
@@ -175,6 +180,9 @@ class MainCmd(cmd.Cmd):
     def do_EOF(self, arg):
         print("Bye")
         return True
+
+    def do_search(self, arg):
+        simple_search(self.dao, arg)
 
     def do_quit(self, arg):
         return self.do_EOF(arg)

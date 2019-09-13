@@ -74,3 +74,11 @@ class EntryDao:
         conn.commit()
         conn.close()
         return nb_row_deleted
+
+    def get_containing(self, s):
+        conn = self.get_conn()
+        c = conn.cursor()
+        c.execute(f"SELECT * FROM entries WHERE instr(TEXT, '{s}')")
+        records = c.fetchall()
+        conn.close()
+        return [(_get_id(record), _record_to_entry(record)) for record in records]
