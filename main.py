@@ -14,8 +14,27 @@ DEFAULT_HEADER_SIZE = 2
 
 
 def prompt_warning(func):
-    func.prompt_warning = True
-    return func
+    def wrapper(*args, **kwargs):
+        if you_sure():
+            func(*args, **kwargs)
+    return wrapper
+
+
+def you_sure():
+    if input("Are you sure? (Y/*) ").lower() in ("", "y", "yes"):
+        return True
+    print("nothing happened")
+    return False
+
+
+def check_arg_id_entry(func):
+    def wrapper(self, arg):
+        try:
+            id_entry = get_check_id_entry(arg)
+            func(self, id_entry)
+        except Exception as e:
+            print(e)
+    return wrapper
 
 
 def datetime_str_default(datetime):
@@ -93,13 +112,11 @@ def show(dao, id_entry):
         print(f"Entry with id {id_entry} not found")
 
 
-@prompt_warning
-def delete(id_entry, dao):
+def delete(dao, id_entry):
     nb_row_deleted = dao.delete(id_entry)
     print(f"nb of rows deleted: {nb_row_deleted}")
 
 
-@prompt_warning
 def reset(dao):
     shutil.rmtree(os.path.dirname(entrydao.db_path_default))
     dao.init_table()
@@ -123,13 +140,6 @@ def get_check_id_entry(ans_tail):
         raise ValueError(f"Expected integer, unlike: {input_entry}")
 
 
-def you_sure():
-    if input("Are you sure? (Y/*)").lower() in ("", "y", "yes"):
-        return True
-    print("nothing happened")
-    return False
-
-
 class MainCmd(cmd.Cmd):
     def __init__(self, dao):
         super().__init__()
@@ -139,19 +149,13 @@ class MainCmd(cmd.Cmd):
     def do_list(self, arg):
         list_entries(self.dao)
 
+    @check_arg_id_entry
     def do_show(self, arg):
-        try:
-            id_entry = get_check_id_entry(arg)
-            show(self.dao, id_entry)
-        except Exception as e:
-            print(e)
+        show(self.dao, arg)
 
+    @check_arg_id_entry
     def do_update(self, arg):
-        try:
-            id_entry = get_check_id_entry(arg)
-            update(self.dao, id_entry)
-        except Exception as e:
-            print(e)
+        update(self.dao, arg)
 
     def do_new(self, arg):
         write_new(self.dao)
@@ -159,17 +163,14 @@ class MainCmd(cmd.Cmd):
     def do_random(self, arg):
         write_random_entry(self.dao)
 
+    @prompt_warning
+    @check_arg_id_entry
     def do_delete(self, arg):
-        if you_sure():
-            try:
-                id_entry = get_check_id_entry(arg)
-                update(self.dao, id_entry)
-            except Exception as e:
-                print(e)
+        delete(self.dao, arg)
 
+    @prompt_warning
     def do_reset(self, arg):
-        if you_sure():
-            reset(self.dao)
+        reset(self.dao)
 
     def do_EOF(self, arg):
         print("Bye")
