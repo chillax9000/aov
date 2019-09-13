@@ -1,16 +1,14 @@
-import inspect
+import cmd
 import os
 import random
-import readline
 import shutil
+import signal
 import string
 import subprocess
 import tempfile
-import signal
 
-import completer
 import entrydao
-from entry import Entry, EntryNotFoundError
+from entry import Entry
 
 DEFAULT_HEADER_SIZE = 2
 
@@ -84,7 +82,7 @@ def list_entries(dao):
         print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
 
 
-def show(id_entry, dao):
+def show(dao, id_entry):
     entry = dao.get(id_entry)
     if entry is not None:
         n = max([len(line) for line in entry.text.split("\n")])
@@ -117,67 +115,76 @@ def write_random_entry(dao, text_size=64):
     dao.write(Entry(text))
 
 
-actions = {
-    help: ["h", "help"],
-    list_entries: ["list", "l"],
-    show: ["s", "show"],
-    update: ["update", "u"],
-    write_new: ["new", "n"],
-    write_random_entry: ["random"],
-    delete: ["delete", "d"],
-    reset: ["reset"]
-}
-
-
 def get_check_id_entry(ans_tail):
-    input_entry = ans_tail[0] if len(ans_tail) > 0 else input("entry id?")
+    input_entry = ans_tail if len(ans_tail) > 0 else input("entry id? ")
     try:
         return int(input_entry)
     except ValueError:
         raise ValueError(f"Expected integer, unlike: {input_entry}")
 
 
-def loop(actions, dao):
-    while True:
-        ans = input()
-        ans_splitted = ans.split()
-        ans_head = ans_splitted[0] if len(ans_splitted) > 0 else None
-        ans_tail = ans_splitted[1:]
-        for action, aliases in actions.items():
-            if ans_head in aliases:
-                if getattr(action, "prompt_warning", False):
-                    if input("Are you sure? (y/*)") != "y":
-                        print("nothing happened")
-                        continue
-                expected_args = inspect.getfullargspec(action)[0]
-                getters = {
-                    "dao": lambda: dao,
-                    "id_entry": lambda: get_check_id_entry(ans_tail),
-                    "actions": lambda: actions,
-                }
-                try:
-                    selected_items = {name: getter() for name, getter in getters.items() if name in expected_args}
-                    action(**selected_items)
-                except ValueError as e:
-                    print(e)
-                except EntryNotFoundError as e:
-                    print(e)
+def you_sure():
+    if input("Are you sure? (Y/*)").lower() in ("", "y", "yes"):
+        return True
+    print("nothing happened")
+    return False
 
-        if ans_head in ("quit", "q"):
-            break
+
+class MainCmd(cmd.Cmd):
+    def __init__(self, dao):
+        super().__init__()
+        self.dao = dao
+        self.prompt = "(aov) "
+
+    def do_list(self, arg):
+        list_entries(self.dao)
+
+    def do_show(self, arg):
+        try:
+            id_entry = get_check_id_entry(arg)
+            show(self.dao, id_entry)
+        except Exception as e:
+            print(e)
+
+    def do_update(self, arg):
+        try:
+            id_entry = get_check_id_entry(arg)
+            update(self.dao, id_entry)
+        except Exception as e:
+            print(e)
+
+    def do_new(self, arg):
+        write_new(self.dao)
+
+    def do_random(self, arg):
+        write_random_entry(self.dao)
+
+    def do_delete(self, arg):
+        if you_sure():
+            try:
+                id_entry = get_check_id_entry(arg)
+                update(self.dao, id_entry)
+            except Exception as e:
+                print(e)
+
+    def do_reset(self, arg):
+        if you_sure():
+            reset(self.dao)
+
+    def do_EOF(self, arg):
+        print("Bye")
+        return True
+
+    def do_quit(self, arg):
+        return self.do_EOF(arg)
 
 
 def exit_handler(sig, frame):
-    print("\nbye")
+    print("\nBye")
     exit(0)
 
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, exit_handler)
 
-    options = [sorted(x, key=len)[-1] for x in actions.values()]
-    readline.set_completer(completer.Completer(options).complete)
-    readline.parse_and_bind('tab: complete')
-
-    loop(actions, entrydao.EntryDao())
-
+    MainCmd(entrydao.EntryDao()).cmdloop()
