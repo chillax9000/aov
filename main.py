@@ -82,6 +82,11 @@ def show_text_beginning(text, max_n_char=32, going_on="..."):
     return f"{s:<{max_n_char}}"
 
 
+def display_ids_entries(ids_entries):
+    for id, entry in ids_entries:
+        print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
+
+
 def write_new(dao):
     entry_new = entry_from_user_input(get_user_input(entry_to_user_input(Entry())))
     dao.write(entry_new)
@@ -96,9 +101,12 @@ def update(dao, id_entry):
     dao.update(id_entry, entry_new)
 
 
-def list_entries(dao):
-    for id, entry in dao.get_all():
-        print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
+def list_all(dao):
+    display_ids_entries(dao.get_all())
+
+
+def simple_search(dao, s):
+    display_ids_entries(dao.get_containing(s))
 
 
 def show(dao, id_entry):
@@ -122,19 +130,10 @@ def reset(dao):
     dao.init_table()
 
 
-def help(actions):
-    print("/".join([sorted(aliases, key=len)[0] for action, aliases in actions.items()]))
-
-
 def write_random_entry(dao, text_size=64):
     chars = " " + string.ascii_lowercase
     text = "".join(random.choices(chars, weights=[8] + [1 for _ in string.ascii_lowercase], k=text_size))
     dao.write(Entry(text))
-
-
-def simple_search(dao, s):
-    for id, entry in dao.get_containing(s):
-        print(f"{id}|", show_text_beginning(entry.text.strip()), datetime_str_default(entry.datetime), f"|{id}")
 
 
 def get_check_id_entry(ans_tail):
@@ -152,7 +151,10 @@ class MainCmd(cmd.Cmd):
         self.prompt = "(aov) "
 
     def do_list(self, arg):
-        list_entries(self.dao)
+        list_all(self.dao)
+
+    def do_search(self, arg):
+        simple_search(self.dao, arg)
 
     @check_arg_id_entry
     def do_show(self, arg):
@@ -180,9 +182,6 @@ class MainCmd(cmd.Cmd):
     def do_EOF(self, arg):
         print("Bye")
         return True
-
-    def do_search(self, arg):
-        simple_search(self.dao, arg)
 
     def do_quit(self, arg):
         return self.do_EOF(arg)
