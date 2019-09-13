@@ -186,6 +186,17 @@ class MainCmd(cmd.Cmd):
     def do_quit(self, arg):
         return self.do_EOF(arg)
 
+    def precmd(self, line):
+        # iin case of one-letter command, if there is only one matching command, expand
+        args = line.split()
+        names = [name[3:] for name in self.get_names() if name.startswith("do_")]
+        if args and len(args[0]) == 1:
+            c = args[0]
+            matching_names = list(filter(lambda s: s.startswith(c), names))
+            if len(matching_names) == 1:
+                line = matching_names[0] + line[1:]
+        return line
+
 
 def exit_handler(sig, frame):
     print("\nBye")
