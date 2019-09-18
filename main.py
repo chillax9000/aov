@@ -51,7 +51,7 @@ def get_user_input(text_entry):
         with open(buffer_path, "w") as f:
             f.write(text)
 
-        cmd = ["vim", buffer_path]
+        cmd = ["editor", buffer_path]
         subprocess.run(cmd)
 
         with open(buffer_path, "r") as f:
