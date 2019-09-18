@@ -7,12 +7,12 @@ db_path_default = os.path.join(os.path.dirname(__file__), "data", "data.db")
 
 
 def _get_id(record):
-    id, text, creation_datetime_str, update_datetime_str = record
+    id, text, creation_datetime_str, update_datetime_str , topic = record
     return id
 
 
 def _record_to_entry(record):
-    id, text, creation_datetime_str, update_datetime_str = record
+    id, text, creation_datetime_str, update_datetime_str , topic = record
     return entry.Entry(text,
                        dt.datetime.fromisoformat(creation_datetime_str),
                        dt.datetime.fromisoformat(update_datetime_str))
@@ -31,8 +31,8 @@ class EntryDao:
         conn = self.get_conn()
         c = conn.cursor()
         c.execute(f"""
-        INSERT INTO entries(text, creation_datetime, update_datetime) 
-        VALUES ("{entry.text}", "{entry.creation_datetime.isoformat()}", "{entry.update_datetime.isoformat()}")
+        INSERT INTO entries(text, creation_datetime, update_datetime, topic) 
+        VALUES ("{entry.text}", "{entry.creation_datetime.isoformat()}", "{entry.update_datetime.isoformat()}", "{entry.topic}")
         """)
         conn.commit()
         conn.close()

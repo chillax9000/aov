@@ -67,16 +67,16 @@ def entry_from_user_input(text_entry, header_size=DEFAULT_HEADER_SIZE):
     return Entry(new_text, entry.creation_datetime, datetime.datetime.now())
 
 
-def make_header(creation_datetime):
-    datetime_str = datetime_str_default(creation_datetime)
-    line = f"created: {datetime_str}"
+def make_header(entry):
+    datetime_str = datetime_str_default(entry.creation_datetime)
+    line = f"created: {datetime_str} | topic: {entry.topic}"
     bar = "~" * len(line)
     return f"{line}\n{bar}"
 
 
 def entry_to_user_input(entry):
     template = "{header}\n{body}"
-    return template.format(body=entry.text, header=make_header(entry.creation_datetime)), entry
+    return template.format(body=entry.text, header=make_header(entry)), entry
 
 
 def _text_beginning(text, max_n_char=32, going_on="..."):
@@ -92,6 +92,7 @@ def display_ids_entries(ids_entries):
               _text_beginning(entry.text.strip()),
               datetime_str_default(entry.creation_datetime),
               datetime_str_default(entry.update_datetime),
+              entry.topic,
               f"|{id}")
 
 

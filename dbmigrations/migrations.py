@@ -1,4 +1,4 @@
-from dbmigrations.sqlitemigrators import InitMigrator
+from dbmigrations.sqlitemigrators import InitMigrator, AddTopicMigrator
 
 
 def do_migrations(sqlite_db_path):
@@ -6,6 +6,7 @@ def do_migrations(sqlite_db_path):
     # APPEND ONLY
     MIGRATIONS = [
         InitMigrator(sqlite_db_path),
+        AddTopicMigrator(sqlite_db_path),
     ]
 
     last_version_available = len(MIGRATIONS) - 1
