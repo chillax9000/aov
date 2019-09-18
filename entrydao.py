@@ -21,24 +21,11 @@ def _record_to_entry(record):
 class EntryDao:
     def __init__(self, db_path=db_path_default):
         self.db_path = db_path
-        if not os.path.exists(db_path):
-            self.init_table()
 
     def get_conn(self):
         if not os.path.exists(os.path.dirname(self.db_path)):
             os.makedirs(os.path.dirname(self.db_path))
         return sqlite3.connect(self.db_path)
-
-    def init_table(self):
-        conn = self.get_conn()
-        c = conn.cursor()
-        c.execute("""CREATE TABLE entries (
-        id INTEGER PRIMARY KEY, 
-        text TEXT, 
-        creation_datetime timestamp, 
-        update_datetime timestamp)""")
-        conn.commit()
-        conn.close()
 
     def write(self, entry):
         conn = self.get_conn()

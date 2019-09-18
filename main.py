@@ -7,6 +7,7 @@ import string
 import subprocess
 import tempfile
 import datetime
+import dbmigrations.migrations
 
 import entrydao
 from entry import Entry
@@ -134,7 +135,11 @@ def delete(dao, id_entry):
 
 def reset(dao):
     shutil.rmtree(os.path.dirname(entrydao.db_path_default))
-    dao.init_table()
+    migrate(dao)
+
+
+def migrate(dao):
+    dbmigrations.migrations.do_migrations(dao.db_path)
 
 
 def write_random_entry(dao, text_size=64):
@@ -185,6 +190,10 @@ class MainCmd(cmd.Cmd):
     @prompt_warning
     def do_reset(self, arg):
         reset(self.dao)
+
+    @prompt_warning
+    def do_migrate(self, arg):
+        migrate(self.dao)
 
     def do_EOF(self, arg):
         print("Bye")
