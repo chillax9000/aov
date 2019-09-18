@@ -64,7 +64,7 @@ def entry_from_user_input(text_entry, header_size=DEFAULT_HEADER_SIZE):
     text, entry = text_entry
     lines = text.split("\n")
     new_text = "\n".join(lines[header_size:])
-    return Entry(new_text, entry.creation_datetime, datetime.datetime.now())
+    return entry.update(text=new_text)
 
 
 def make_header(entry):
@@ -128,6 +128,15 @@ def view(dao, id_entry):
     else:
         print(f"Entry with id {id_entry} not found")
 
+def set_topic(dao, id_entry):
+    entry = dao.get(id_entry)
+    if entry is not None:
+        print(f"Actual topic is {entry.topic}")
+        new_topic = input("New topic: ")
+        dao.update(id_entry, entry.update(topic=new_topic))
+    else:
+        print(f"Entry with id {id_entry} not found")
+
 
 def delete(dao, id_entry):
     nb_row_deleted = dao.delete(id_entry)
@@ -182,6 +191,10 @@ class MainCmd(cmd.Cmd):
 
     def do_random(self, arg):
         write_random_entry(self.dao)
+
+    @check_arg_id_entry
+    def do_topic(self, arg):
+        set_topic(self.dao, arg)
 
     @prompt_warning
     @check_arg_id_entry
