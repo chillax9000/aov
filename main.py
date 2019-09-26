@@ -114,6 +114,11 @@ def list_all(dao):
     display_ids_entries(dao.get_all())
 
 
+def list_topics(dao):
+    for topic in sorted(dao.get_topics()):
+        print(topic)
+
+
 def simple_search(dao, s):
     display_ids_entries(dao.get_containing(s))
 
@@ -127,6 +132,7 @@ def view(dao, id_entry):
         print("=" * n)
     else:
         print(f"Entry with id {id_entry} not found")
+
 
 def set_topic(dao, id_entry):
     entry = dao.get(id_entry)
@@ -173,7 +179,14 @@ class MainCmd(cmd.Cmd):
         self.prompt = "(aov) "
 
     def do_list(self, arg):
-        list_all(self.dao)
+        if arg == "topics":
+            list_topics(self.dao)
+        else:
+            list_all(self.dao)
+
+    def complete_list(self, text, line, begidx, endidx):
+        keywords = ["topics"]
+        return [kw for kw in keywords if kw.startswith(text)]
 
     def do_search(self, arg):
         simple_search(self.dao, arg)

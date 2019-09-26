@@ -83,3 +83,11 @@ class EntryDao:
         records = c.fetchall()
         conn.close()
         return [(_get_id(record), _record_to_entry(record)) for record in records]
+
+    def get_topics(self):
+        conn = self.get_conn()
+        c = conn.cursor()
+        c.execute(f"SELECT topic FROM entries")
+        records = c.fetchall()
+        conn.close()
+        return set(record[0] for record in records)
