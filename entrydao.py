@@ -3,7 +3,8 @@ import sqlite3
 import entry
 import datetime as dt
 
-db_path_default = os.path.join(os.path.dirname(__file__), "data", "data.db")
+db_base_path_default = os.path.join(os.path.dirname(__file__), "data")
+db_file_name_default = "data.db"
 
 
 def _get_id(record):
@@ -22,8 +23,9 @@ def _record_to_entry(record):
 
 
 class EntryDao:
-    def __init__(self, db_path=db_path_default):
-        self.db_path = db_path
+    def __init__(self, db_name=None, db_base_path=db_base_path_default):
+        self.db_name = db_name if db_name else "default"
+        self.db_path = os.path.join(db_base_path, self.db_name, db_file_name_default)
 
     def get_conn(self):
         if not os.path.exists(os.path.dirname(self.db_path)):

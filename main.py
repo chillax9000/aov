@@ -1,3 +1,4 @@
+import argparse
 import cmd
 import os
 import random
@@ -150,7 +151,7 @@ def delete(dao, id_entry):
 
 
 def reset(dao):
-    shutil.rmtree(os.path.dirname(entrydao.db_path_default))
+    shutil.rmtree(os.path.dirname(dao.db_path))
     migrate(dao)
 
 
@@ -249,4 +250,8 @@ def exit_handler(sig, frame):
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, exit_handler)
 
-    MainCmd(entrydao.EntryDao()).cmdloop()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("database", type=str, nargs="?", default=None)
+    args = parser.parse_args()
+
+    MainCmd(entrydao.EntryDao(args.database)).cmdloop()

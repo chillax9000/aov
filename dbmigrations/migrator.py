@@ -2,7 +2,7 @@ import os
 import sqlite3
 
 
-class BaseMigrator():
+class BaseMigrator:
     def script(self):
         raise NotImplementedError
 
