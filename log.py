@@ -3,8 +3,8 @@ import datetime
 import enum
 
 PREFIX = {
-    "Text": ". ",
     "Entry": "> ",
+    "Text": ". ",
 }
 
 
@@ -14,10 +14,60 @@ class State(enum.Enum):
 
     ended = -1
     error = -2
-    eof = -3
 
     def __bool__(self):
         return bool(self.value)
+
+
+class ListUnique:
+    def __init__(self, child_class, handler, start_symbol=None, end_symbol=None):
+        self.handler = handler
+        self.state = State.unitialized
+        self.start_symbol = start_symbol
+        self.end_symbol = end_symbol
+        self.child_class = child_class
+        self.children = []
+
+    def deal_with(self, line):
+        if self.state is State.unitialized:
+            self.state = State.ongoing
+            if self.start_symbol is not None:
+                pass  # do smth, return
+        if self.state is State.ongoing:
+            if self.end_symbol is not None:
+                pass  # do smth, return
+            else:
+                if file_ended(line):
+                    return False, None
+            self.children.append(self.child_class(self))
+            return False, self.children[-1]
+
+        raise Exception(f"{self} is ended but was called")
+
+    def __repr__(self):
+        return f"<ListOnly {self.children}>"
+
+
+class Span:
+    def __init__(self, prefix, collect, inital_value, handler):
+        self.handler = handler
+        self.state = State.unitialized
+        self.collect = collect
+        self.prefix = prefix
+        self.value = inital_value
+
+    def deal_with(self, line):
+        if self.state is State.unitialized:
+            self.state = State.ongoing
+        if self.state is State.ongoing:
+            if line.startswith(self.prefix):
+                self.value = self.collect(self.value, line[len(self.prefix):])
+                return True, self
+            else:
+                self.state = State.ended
+                return False, self.handler
+
+        raise Exception(f"{self} is ended but was called")
 
 
 class Entry:
@@ -30,41 +80,20 @@ class Entry:
     def deal_with(self, line):
         if self.state is State.unitialized:
             self.state = State.ongoing
-            if line.startswith(PREFIX["Entry"]):
-                self.time = datetime.datetime.fromisoformat(line[2:].strip())
+            prefix = PREFIX["Entry"]
+            if line.startswith(prefix):
+                self.time = datetime.datetime.fromisoformat(line[len(prefix):].strip())
             else:
-                raise ValueError(f"{self} expected first line to start with {PREFIX['entry']}")
+                raise Exception(f"{self} expected first line to start with {prefix}")
             return True, self.text
         if self.state is State.ongoing:
             self.state = State.ended
             return False, self.handler
 
-        return False, None
+        raise Exception(f"{self} is ended but was called")
 
     def __repr__(self):
-        return f"<Entry {self.time}, {self.text.value[:32]}>"
-
-
-class Span:
-    def __init__(self, symbol, collect, initial, handler):
-        self.handler = handler
-        self.state = State.unitialized
-        self.collect = collect
-        self.symbol = symbol
-        self.value = initial
-
-    def deal_with(self, line):
-        if self.state is State.unitialized:
-            self.state = State.ongoing
-        if self.state is State.ongoing:
-            if line.startswith(self.symbol):
-                self.value = self.collect(self.value, line[2:].replace("\n", " "))
-                return True, self
-            else:
-                self.state = State.ended
-                return False, self.handler
-
-        return False, None
+        return f"<Entry {self.time}, {repr(self.text.value[:32])}>"
 
 
 def empty(line):
@@ -83,9 +112,9 @@ def parse_base(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"No file found at {file_path}")
 
-    entries = []
+    entries = ListUnique(Entry, None)
+    agent = entries
     with open(file_path) as f:
-        agent = Entry(None)
         line = f.readline()
         while True:
             if ignore(line):
@@ -94,15 +123,10 @@ def parse_base(file_path):
 
             was_processed, next_agent = agent.deal_with(line)
             if next_agent is None:
-                if agent.state is State.ended:
-                    entries.append(agent)
-                    if file_ended(line):
-                        break
-                    else:
-                        next_agent = Entry(None)
+                if file_ended(line):
+                    break
                 else:
-                    raise ValueError("no next but state no ended")
-
+                    raise Exception("no next but state no ended")
             if was_processed:
                 line = f.readline()
             agent = next_agent
