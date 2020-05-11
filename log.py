@@ -1,6 +1,9 @@
 import os
 import datetime
 import enum
+import argparse
+import tempfile
+import subprocess
 
 PREFIX = {
     "Entry": "> ",
@@ -97,9 +100,9 @@ class Entry(Base):
         return f"<Entry {self.time}, {repr(self.text)[:32]}>"
 
 
-def format_entry(entry, pfx_entry=PREFIX["Entry"], pfx_text=PREFIX["Text"]):
-    yield pfx_entry + entry.time.isoformat()
-    for line in entry.text.split("\n"):
+def format_entry(date, text, pfx_entry=PREFIX["Entry"], pfx_text=PREFIX["Text"]):
+    yield pfx_entry + date.isoformat()
+    for line in text.split("\n"):
         yield pfx_text + line
 
 
@@ -141,10 +144,52 @@ def parse_base(file_path):
     return entries
 
 
+def get_user_input(text_in=""):
+    with tempfile.NamedTemporaryFile() as buffer:
+        buffer_path = buffer.name
+
+        with open(buffer_path, "w") as f:
+            f.write(text_in)
+
+        cmd = ["editor", buffer_path]
+        subprocess.run(cmd)
+
+        with open(buffer_path, "r") as f:
+            text_out = f.read()
+    return text_out
+
+
+def new(args):
+    try:
+        parse_base(args.file)
+    except Exception as e:
+        print("Failed to parse file")
+        print(e)
+        exit()
+
+    text = get_user_input()
+    with open(args.file, "a") as f:
+        f.write("\n".join(format_entry(datetime.datetime.now(), text)))
+
+
+def read(args):
+    entries = parse_base(args.file)
+    for entry in entries:
+        print("\n".join(format_entry(entry.time, entry.text)))
+
+
 if __name__ == "__main__":
-    es = parse_base("logtest")
-    print(es)
-    print("...")
-    for entry in es:
-        for line in format_entry(entry):
-            print(line)
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+
+    parser_new = subparsers.add_parser("new")
+    parser_new.add_argument("file")
+    parser_new.set_defaults(func=new)
+
+    parser_read = subparsers.add_parser("read")
+    parser_read.set_defaults(func=read)
+    parser_read.add_argument("file")
+
+    args = parser.parse_args()
+
+    args.func(args)
