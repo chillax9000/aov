@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import os
 import datetime
 import enum
@@ -5,10 +7,14 @@ import argparse
 import tempfile
 import subprocess
 
+# parameters
+DEFAULT_FILE_PATH = os.path.join(os.path.dirname(__file__), ".logfile")
+EDITOR = "vim"
 PREFIX = {
     "Entry": "> ",
     "Text": ". ",
 }
+# end
 
 
 class State(enum.Enum):
@@ -46,7 +52,7 @@ class ListUnique(Base):
                 pass  # do smth, return
             else:
                 if file_ended(line):
-                    return False, None
+                    return False, self.handler
             self.children.append(self.child_class(self))
             return False, self.children[-1]
 
@@ -101,9 +107,11 @@ class Entry(Base):
 
 
 def format_entry(date, text, pfx_entry=PREFIX["Entry"], pfx_text=PREFIX["Text"]):
-    yield pfx_entry + date.isoformat()
+    yield pfx_entry + date.isoformat() + "\n"
+    if text[-1] == "\n":
+        text = text[:-1]
     for line in text.split("\n"):
-        yield pfx_text + line
+        yield pfx_text + line + "\n"
 
 
 def empty(line):
@@ -151,7 +159,7 @@ def get_user_input(text_in=""):
         with open(buffer_path, "w") as f:
             f.write(text_in)
 
-        cmd = ["editor", buffer_path]
+        cmd = [EDITOR, buffer_path]
         subprocess.run(cmd)
 
         with open(buffer_path, "r") as f:
@@ -160,6 +168,8 @@ def get_user_input(text_in=""):
 
 
 def new(args):
+    if args.file == DEFAULT_FILE_PATH and not os.path.exists(args.file):
+        open(DEFAULT_FILE_PATH, "w").close()
     try:
         parse_base(args.file)
     except Exception as e:
@@ -169,26 +179,34 @@ def new(args):
 
     text = get_user_input()
     with open(args.file, "a") as f:
-        f.write("\n".join(format_entry(datetime.datetime.now(), text)))
+        f.writelines(format_entry(datetime.datetime.now(), text))
 
 
-def read(args):
+def _print(args):
     entries = parse_base(args.file)
+    date = None
     for entry in entries:
-        print("\n".join(format_entry(entry.time, entry.text)))
+        if date != entry.time.date():
+            date = entry.time.date()
+            print("[", date.strftime("%d, %B %Y"), "]", end="\n\n")
+        print(entry.time.strftime("%H:%M.%S"))
+        for line in entry.text.split("\n"):
+            print(" ", line)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
+    parser.set_defaults(func=lambda _: parser.print_help())
+
     parser_new = subparsers.add_parser("new")
-    parser_new.add_argument("file")
+    parser_new.add_argument("file", nargs="?", default=DEFAULT_FILE_PATH)
     parser_new.set_defaults(func=new)
 
-    parser_read = subparsers.add_parser("read")
-    parser_read.set_defaults(func=read)
-    parser_read.add_argument("file")
+    parser_print = subparsers.add_parser("print")
+    parser_print.add_argument("file", nargs="?", default=DEFAULT_FILE_PATH)
+    parser_print.set_defaults(func=_print)
 
     args = parser.parse_args()
 
