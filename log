@@ -57,7 +57,7 @@ class ListUnique(Base):
             return False, self.children[-1]
 
     def __repr__(self):
-        return f"<ListOnly {self.children}>"
+        return f"<ListUnique {self.children}>"
 
     def __iter__(self):
         yield from self.children
@@ -152,6 +152,48 @@ def parse_base(file_path):
     return entries
 
 
+def parse_simple(file_path):
+    class SimpleEntry:
+        def __init__(self, time):
+            self.time = time
+            self.text = ""
+
+    def try_parse_entry_header(line):
+        pfx = PREFIX["Entry"]
+        if line.startswith(pfx):
+            try:
+                _line = line[len(pfx):].strip()
+                return SimpleEntry(datetime.datetime.fromisoformat(_line))
+            except ValueError:
+                raise Exception(f"Can't parse entry header: {_line}")
+
+    def try_parse_text_line(line, entry, entries):
+        pfx = PREFIX["Text"]
+        if line.startswith(pfx):
+            entry.text += line[len(pfx):]
+        else:
+            entries.append(entry)
+            entry = None
+        return entry
+
+    with open(file_path) as f:
+        entries = []
+        entry = None
+        for line in f:
+            if ignore(line): continue
+
+            if entry is not None:
+                entry = try_parse_text_line(line, entry, entries)
+                if entry:
+                    continue
+
+            entry = try_parse_entry_header(line)
+        if entry is not None:
+            entries.append(entry)
+
+    return entries
+
+
 def get_user_input(text_in=""):
     with tempfile.NamedTemporaryFile() as buffer:
         buffer_path = buffer.name
@@ -171,7 +213,7 @@ def new(args):
     if args.file == DEFAULT_FILE_PATH and not os.path.exists(args.file):
         open(DEFAULT_FILE_PATH, "w").close()
     try:
-        parse_base(args.file)
+        args.fn_parse(args.file)
     except Exception as e:
         print("Failed to parse file")
         print(e)
@@ -183,7 +225,7 @@ def new(args):
 
 
 def _print(args):
-    entries = parse_base(args.file)
+    entries = args.fn_parse(args.file)
     date = None
     for entry in entries:
         if date != entry.time.date():
@@ -209,5 +251,6 @@ if __name__ == "__main__":
     parser_print.set_defaults(func=_print)
 
     args = parser.parse_args()
+    args.fn_parse = parse_simple
 
     args.func(args)
